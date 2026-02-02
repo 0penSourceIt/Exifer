@@ -436,6 +436,16 @@ fun ExifScreen(initialUri: Uri? = null, onBack: () -> Unit) {
                     }
                 }
             }
+            item {
+                Text(
+                    text = "Made with ❤️ by OpenSourceIt",
+                    color = hackerGreen.copy(alpha = 0.6f),
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }

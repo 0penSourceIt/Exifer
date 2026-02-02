@@ -1,4 +1,9 @@
-# 🔓 Exifer — Advanced EXIF & Metadata Forensic Analyzer (Open Source)
+<h1 align="center">
+💀 EXIFER 💀
+</h1>
+<p align="center">
+<code>[ GPS • DEVICE • OWNER • PAYLOAD • HASH ]</code>
+</p>
 
 Exifer is a next-generation **cybersecurity-focused EXIF and metadata forensic analyzer** for Android.
 
