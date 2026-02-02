@@ -1,8 +1,11 @@
 <h1 align="center">
-💀 EXIFER 💀
+<span style="color:#00ff00;">🛡️ EXIFER 🛡️</span>
 </h1>
+
 <p align="center">
-<code>[ GPS • DEVICE • OWNER • PAYLOAD • HASH ]</code>
+<code style="color:#00ffcc;">
+[ GPS • DEVICE • OWNER • PAYLOAD • HASH ]
+</code>
 </p>
 
 Exifer is a next-generation **cybersecurity-focused EXIF and metadata forensic analyzer** for Android.
