@@ -26,25 +26,28 @@ It is designed to help users, investigators, journalists, and privacy-aware indi
 
 ## 📸 Screenshots
 
-<p align="center">
-  <b>1. Home Screen</b><br>
-  <img src="Screenshots/HomeScreen.png" width="300">
-</p>
-
-<p align="center">
-  <b>2. Quick Details after File Selection</b><br>
-  <img src="Screenshots/QuickDetails.png" width="300">
-</p>
-
-<p align="center">
-  <b>3. Full Exif Detail</b><br>
-  <img src="Screenshots/CompleteExif.png" width="300">
-</p>
-
-<p align="center">
-  <b>4. Categorized Exif Detail</b><br>
-  <img src="Screenshots/CategorizedExif.png" width="300">
-</p>
+<table align="center">
+  <tr>
+    <td align="center">
+      <b>1. Home Screen</b><br>
+      <img src="Screenshots/HomeScreen.png" width="250">
+    </td>
+    <td align="center">
+      <b>2. Quick Details</b><br>
+      <img src="Screenshots/QuickDetails.png" width="250">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <b>3. Full Exif Detail</b><br>
+      <img src="Screenshots/CompleteExif.png" width="250">
+    </td>
+    <td align="center">
+      <b>4. Categorized Exif Detail</b><br>
+      <img src="Screenshots/CategorizedExif.png" width="250">
+    </td>
+  </tr>
+</table>
 
 ---
 
