@@ -28,10 +28,10 @@ import java.security.MessageDigest
 import java.util.*
 import androidx.compose.ui.graphics.Color
 
-object exifAnalyzer {
+object ExifAnalyzer {
 
     // ==========================================================
-    // DATA MODELS (moved from exifScreen.kt)
+    // DATA MODELS
     // ==========================================================
     enum class AnalysisViewMode {
         CATEGORIZED, COMPLETE
@@ -46,7 +46,7 @@ object exifAnalyzer {
     )
 
     // ==========================================================
-    // MAIN EXTRACTION (ULTIMATE FORENSIC VERSION - from exifScreen.kt)
+    // MAIN EXTRACTION
     // ==========================================================
 
     fun extractEverythingMetadata(
@@ -60,25 +60,15 @@ object exifAnalyzer {
 
         try {
 
-            // ==========================================================
             // ✅ HEIC FIX: Convert stream → temp file for full parsing
-            // ==========================================================
             val tempFile = File(context.cacheDir, "scan_${System.currentTimeMillis()}")
             context.contentResolver.openInputStream(uri)?.use { input ->
                 tempFile.outputStream().use { output -> input.copyTo(output) }
             }
 
-            // ==========================================================
-            // FULL BASIC EXIF TAG EXTRACTION (COMPLETE)
-            // ==========================================================
-
+            // FULL BASIC EXIF TAG EXTRACTION
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 val exif = ExifInterface(inputStream)
-
-                // ==========================================================
-                // 🔥 ULTIMATE EXIF EXTRACTION (NO LIMIT)
-                // Automatically pulls every Android-supported EXIF tag
-                // ==========================================================
 
                 val allTags = ExifInterface::class.java
                     .fields
@@ -103,23 +93,16 @@ object exifAnalyzer {
                     basicData["EXIF:GPS_LONG_DECIMAL"] = latLong[1].toString()
                 }
 
-                // ==========================================================
-                // ✅ Extract Embedded Thumbnail (if present)
-                // ==========================================================
+                // Extract Embedded Thumbnail
                 exif.thumbnailBitmap?.let {
                     basicData["EXIF:Embedded Thumbnail"] =
                         "YES (${it.width}x${it.height})"
                 }
-
             }
 
-            // ==========================================================
             // DEEP METADATA EXTRACTION (MAKERNOTES + XMP + IPTC + ICC)
-            // ==========================================================
-
             context.contentResolver.openInputStream(uri)?.use { metadataStream ->
                 val metadata = ImageMetadataReader.readMetadata(tempFile)
-
 
                 for (directory in metadata.directories) {
                     val dirName = directory.name
@@ -159,10 +142,7 @@ object exifAnalyzer {
                 getSpecificTag(metadata, "Owner Name")?.let { makerNoteData["Owner Name"] = it }
             }
 
-            // ==========================================================
-            // 🔥 ULTIMATE FORENSIC INTELLIGENCE INJECTION
-            // ==========================================================
-
+            // 🔥 FORENSIC INTELLIGENCE INJECTION
             val mergedAll = basicData + makerNoteData + deepData
 
             deepData["FORENSIC: Risk Score"] =
@@ -176,15 +156,6 @@ object exifAnalyzer {
                 deepData["FORENSIC: SHA-256 Hash"] = it
             }
 
-            detectEmbeddedPayload(context, uri)?.let {
-                deepData["FORENSIC: Payload Warning"] = it
-            }
-
-            computeEntropy(context, uri)?.let {
-                deepData["FORENSIC: Entropy Score"] = "$it (High entropy = possible stego)"
-            }
-
-
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -195,10 +166,6 @@ object exifAnalyzer {
             deepData.filterValues { !it.isNullOrBlank() }
         )
     }
-
-    // ==========================================================
-    // 🔥 FORENSIC CORE FUNCTIONS (from exifScreen.kt)
-    // ==========================================================
 
     private fun getSpecificTag(metadata: Metadata, tagName: String): String? {
         for (directory in metadata.directories) {
@@ -222,12 +189,9 @@ object exifAnalyzer {
         if (has("Owner") || has("Artist")) score += 15
         if (has("Photoshop") || has("Adobe") || has("Snapseed")) score += 15
         if (has("XMP") || has("History")) score += 10
-        if (has("Payload")) score += 25
-        if (has("Entropy")) score += 20
 
         return score.coerceAtMost(100)
     }
-
 
     private fun detectTampering(allData: Map<String, String?>): String? {
         val software = allData["EXIF:${ExifInterface.TAG_SOFTWARE}"] ?: return null
@@ -262,154 +226,7 @@ object exifAnalyzer {
         }
     }
 
-    private fun computeEntropy(context: Context, uri: Uri): Double? {
-        return try {
-            val bytes = context.contentResolver.openInputStream(uri)?.readBytes()
-                ?: return null
-
-            val freq = IntArray(256)
-            bytes.forEach { freq[it.toInt() and 0xFF]++ }
-
-            val size = bytes.size.toDouble()
-            var entropy = 0.0
-
-            for (f in freq) {
-                if (f == 0) continue
-                val p = f / size
-                entropy -= p * (Math.log(p) / Math.log(2.0))
-            }
-
-            entropy
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-
-    private fun detectEmbeddedPayload(context: Context, uri: Uri): String? {
-        return try {
-
-            val signatures = mapOf(
-                "ZIP Archive" to "PK".toByteArray(),
-                "PDF Document" to "%PDF".toByteArray(),
-                "DEX/APK Payload" to "dex\n".toByteArray(),
-                "ELF Executable" to byteArrayOf(0x7F, 0x45, 0x4C, 0x46)
-            )
-
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-
-                // ✅ Scan first 512KB
-                val head = ByteArray(512 * 1024)
-                val headRead = stream.read(head)
-
-                if (headRead > 0) {
-                    for ((name, sig) in signatures) {
-                        if (head.copyOf(headRead).startsWith(sig)) {
-                            return "⚠ Embedded Payload Detected at File Start: $name"
-                        }
-                    }
-                }
-
-                // ✅ Scan last 200KB
-                val tailSize = 200 * 1024
-
-                val fileDescriptor =
-                    context.contentResolver.openFileDescriptor(uri, "r") ?: return null
-
-                val fileSize = fileDescriptor.statSize
-                fileDescriptor.close()
-
-                if (fileSize > tailSize) {
-                    val tailStream = context.contentResolver.openInputStream(uri) ?: return null
-                    var remaining = fileSize - tailSize
-                    while (remaining > 0) {
-                        val skipped = tailStream.skip(remaining)
-                        if (skipped <= 0) break
-                        remaining -= skipped
-                    }
-
-                    val tail = ByteArray(tailSize)
-                    val tailRead = tailStream.read(tail)
-                    tailStream.close()
-
-                    if (tailRead > 0) {
-                        for ((name, sig) in signatures) {
-                            if (containsSignature(tail.copyOf(tailRead), sig)) {
-                                return "⚠ Embedded Payload Detected at File End: $name"
-                            }
-                        }
-                    }
-                }
-                // ==========================================================
-                // ✅ MILITARY RAM-SAFE FULL FILE SWEEP (Sliding Window Scan)
-                // Detects payload ANYWHERE without loading full file
-                // ==========================================================
-                context.contentResolver.openInputStream(uri)?.use { fullStream ->
-
-                    val bufferSize = 64 * 1024 // 64KB window
-                    val overlapSize = 32       // overlap to catch split signatures
-
-                    val buffer = ByteArray(bufferSize)
-                    var previousTail = ByteArray(0)
-
-                    while (true) {
-
-                        val bytesRead = fullStream.read(buffer)
-                        if (bytesRead <= 0) break
-
-                        // Merge overlap tail + new chunk
-                        val chunk = previousTail + buffer.copyOf(bytesRead)
-
-                        // Scan this chunk for signatures
-                        for ((name, sig) in signatures) {
-                            if (containsSignature(chunk, sig)) {
-                                return "⚠ Embedded Payload Detected Anywhere Inside File: $name"
-                            }
-                        }
-
-                        // Save last overlap bytes for next scan
-                        previousTail =
-                            if (chunk.size > overlapSize)
-                                chunk.copyOfRange(chunk.size - overlapSize, chunk.size)
-                            else
-                                chunk
-                    }
-                }
-
-
-            }
-            null
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    private fun containsSignature(data: ByteArray, signature: ByteArray): Boolean {
-        for (i in 0..data.size - signature.size) {
-            var match = true
-            for (j in signature.indices) {
-                if (data[i + j] != signature[j]) {
-                    match = false
-                    break
-                }
-            }
-            if (match) return true
-        }
-        return false
-    }
-
-    private fun ByteArray.startsWith(prefix: ByteArray): Boolean {
-        if (this.size < prefix.size) return false
-        for (i in prefix.indices) {
-            if (this[i] != prefix[i]) return false
-            }
-            return true
-    }
-
-    // ==========================================================
-    // CATEGORIZATION LOGIC (from exifScreen.kt)
-    // ==========================================================
-
+    // CATEGORIZATION LOGIC
     fun buildCybersecurityCategories(allData: Map<String, String?>): List<CybersecurityCategory> {
         val forensic = mutableMapOf<String, String?>()
         val gps = mutableMapOf<String, String?>()
@@ -426,7 +243,7 @@ object exifAnalyzer {
         allData.forEach { (k, v) ->
             val key = k.uppercase()
             when {
-                key.contains("FORENSIC") || key.contains("SHA-256") || key.contains("PAYLOAD") || key.contains("RISK") -> forensic[k] = v
+                key.contains("FORENSIC") || key.contains("SHA-256") || key.contains("RISK") -> forensic[k] = v
                 key.contains("GPS") || key.contains("LATITUDE") || key.contains("LONGITUDE") || key.contains("POSITION") || key.contains("ALTITUDE") -> gps[k] = v
                 key == "MAKE" || key == "MODEL" || key.contains("SERIALNUMBER") || key.contains("SERIAL NUMBER") || key.contains("CAMERAID") || key.contains("DEVICE") || key.contains("LENS") -> device[k] = v
                 key.contains("DATETIME") || key.contains("CREATEDATE") || key.contains("MODIFYDATE") || key.contains("DATE ORIGINAL") || key.contains("SUBSEC") || key.contains("DATESTAMP") || key.contains("TIMESTAMP") -> dateTime[k] = v
@@ -443,10 +260,6 @@ object exifAnalyzer {
             }
         }
 
-        // ==========================================================
-        // AUTO-GENERATED CATEGORIES (REPLACES MISCELLANEOUS)
-        // ==========================================================
-
         val dynamicCategories = autoBuckets.entries.mapIndexed { index, entry ->
             CybersecurityCategory(
                 id = 100 + index,
@@ -456,7 +269,6 @@ object exifAnalyzer {
                 tags = entry.value
             )
         }
-
 
         val fixedCategories = listOf(
             CybersecurityCategory(1, "1. GPS / LOCATION DATA", "EXTREME RISK (STALKING)", Color(0xFFFF0000), gps),
@@ -474,9 +286,7 @@ object exifAnalyzer {
         return fixedCategories + dynamicCategories
     }
 
-    // ==========================================================
-    // PDF EXPORT (from exifScreen.kt)
-    // ==========================================================
+    // PDF EXPORT
     fun exportForensicPdf(
         context: Context,
         allData: Map<String, String?>,
@@ -503,7 +313,6 @@ object exifAnalyzer {
                     val pdf = com.itextpdf.kernel.pdf.PdfDocument(writer)
                     val doc = Document(pdf)
 
-                    // Create a Monospace font
                     val monospaceFont: PdfFont = PdfFontFactory.createFont(StandardFontFamilies.COURIER)
 
                     doc.add(Paragraph(Text("🔥 EXIF FORENSIC REPORT").setFont(monospaceFont)))
@@ -519,11 +328,8 @@ object exifAnalyzer {
                         )
                         lineCount++
 
-                        // ✅ New page after ~45 lines
                         if (lineCount % 45 == 0) {
-                            doc.add(
-                                AreaBreak()
-                            )
+                            doc.add(AreaBreak())
                         }
                     }
 
@@ -537,13 +343,9 @@ object exifAnalyzer {
         }
     }
 
-    // ==========================================================
-    // EXIF STRIPPING (from exifScreen.kt)
-    // ==========================================================
+    // EXIF STRIPPING
     fun stripExif(context: Context, uri: Uri): Uri? {
         return try {
-
-            // Decode image into bitmap (this removes ALL metadata)
             val inputStream = context.contentResolver.openInputStream(uri) ?: return null
             val bitmap = BitmapFactory.decodeStream(inputStream)
             inputStream.close()
@@ -560,32 +362,17 @@ object exifAnalyzer {
                 )
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(
-                        MediaStore.MediaColumns.RELATIVE_PATH,
-                        "Download/Exif_Data_Removed"
-                    )
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/Exif_Data_Removed")
                 }
             }
 
             val resolver = context.contentResolver
-            val cleanUri =
-                resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            val cleanUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
 
             cleanUri?.let {
                 resolver.openOutputStream(it)?.use { outputStream ->
-
-                    // 🔥 Re-encode JPEG fresh → ZERO EXIF survives
-                    val format = when {
-                        mime?.contains("png") == true ->
-                    // PNG metadata may survive → force JPEG output
-                            Bitmap.CompressFormat.JPEG
-
-                        else ->
-                            Bitmap.CompressFormat.JPEG
-                    }
-
-                    val quality = if (format == Bitmap.CompressFormat.PNG) 100 else 95
-
+                    val format = Bitmap.CompressFormat.JPEG
+                    val quality = 95
                     bitmap.compress(format, quality, outputStream)
                 }
             }
@@ -598,10 +385,7 @@ object exifAnalyzer {
         }
     }
 
-    // ==========================================================
-    // QUICK INTEL SUMMARY (from exifScreen.kt and modified)
-    // ==========================================================
-
+    // QUICK INTEL SUMMARY
     fun getQuickIntel(
         context: Context,
         uri: Uri?,
@@ -610,7 +394,7 @@ object exifAnalyzer {
 
         if (uri == null) return emptyList()
 
-        var fileName = "Unknown"
+        var fileName= "Unknown"
         var fileSize = "Unknown"
         val fileFormat = context.contentResolver.getType(uri) ?: "Unknown"
 
@@ -619,7 +403,7 @@ object exifAnalyzer {
             val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
 
             if (cursor.moveToFirst()) {
-                fileName = cursor.getString(nameIndex) ?: "Unknown"
+               fileName= cursor.getString(nameIndex) ?: "Unknown"
                 val size = cursor.getLong(sizeIndex)
 
                 fileSize = when {
@@ -634,9 +418,16 @@ object exifAnalyzer {
             }
         }
 
+        // Search for a deep unique identifier in the metadata
+        val docId = allData.entries.find {
+            val k = it.key.uppercase()
+            k.contains("DOCUMENTID") || k.contains("UNIQUEID") || k.contains("INSTANCEID")
+        }?.value ?: "SYSTEM_GEN_NULL"
+
         return listOf(
-            "Identifier" to fileName,
-            "Payload Size" to fileSize,
+            "Display File Name (For User Understanding)" to fileName,
+            "Document ID (For System Understanding)" to docId,
+            "Size" to fileSize,
             "MIME Format" to fileFormat,
             "Coordinates" to (
                     allData["EXIF:GPS_LAT_DECIMAL"]?.let {

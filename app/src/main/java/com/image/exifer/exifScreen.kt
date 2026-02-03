@@ -49,8 +49,8 @@ import com.image.exifer.ui.theme.DarkBg
 import com.image.exifer.ui.theme.TextDim
 import kotlinx.coroutines.launch
 import java.io.File
-import com.image.exifer.exifAnalyzer.AnalysisViewMode
-import com.image.exifer.exifAnalyzer.CybersecurityCategory
+import com.image.exifer.ExifAnalyzer.AnalysisViewMode
+import com.image.exifer.ExifAnalyzer.CybersecurityCategory
 
 // ==========================================================
 // 1. MAIN UI SCREEN: ExifScreen
@@ -90,7 +90,7 @@ fun ExifScreen(initialUri: Uri? = null, onBack: () -> Unit) {
             if (mime.contains("heic") || mime.contains("heif")) {
                 statusMessage = "⚠ HEIC images may contain limited metadata on Android"
             }
-            val result = exifAnalyzer.extractEverythingMetadata(context, uri)
+            val result = ExifAnalyzer.extractEverythingMetadata(context, uri)
             rawExifData = result.first
             rawMakerNoteData = result.second
             rawDeepPayloadData = result.third
@@ -183,7 +183,7 @@ fun ExifScreen(initialUri: Uri? = null, onBack: () -> Unit) {
     }
 
     val categories = remember(allData) {
-        exifAnalyzer.buildCybersecurityCategories(allData)
+        ExifAnalyzer.buildCybersecurityCategories(allData)
     }
 
     if (showSearchInfo) {
@@ -299,7 +299,7 @@ fun ExifScreen(initialUri: Uri? = null, onBack: () -> Unit) {
                             color = hackerRed,
                             onClick = {
                                 selectedUri?.let {
-                                    val cleaned = exifAnalyzer.stripExif(context, it)
+                                    val cleaned = ExifAnalyzer.stripExif(context, it)
                                     Toast.makeText(
                                         context,
                                         if (cleaned != null) "✅ EXIF Data Removed and SAVED to Downloads/Exif_Data_Removed"
@@ -315,7 +315,7 @@ fun ExifScreen(initialUri: Uri? = null, onBack: () -> Unit) {
                             color = neonYellow,
                             onClick = {
                                 val merged = rawExifData + rawMakerNoteData + rawDeepPayloadData
-                                val pdfUri = exifAnalyzer.exportForensicPdf(context, merged)
+                                val pdfUri = ExifAnalyzer.exportForensicPdf(context, merged)
 
                                 Toast.makeText(
                                     context,
@@ -406,7 +406,7 @@ fun ExifScreen(initialUri: Uri? = null, onBack: () -> Unit) {
                         Text(
                             text = "// Select mode to expand detailed forensic datastream",
                             color = hackerGreen.copy(alpha = 0.6f),
-                            fontSize = 10.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Monospace,
                             modifier = Modifier.padding(top = 8.dp, start = 4.dp)
                         )
@@ -440,7 +440,7 @@ fun ExifScreen(initialUri: Uri? = null, onBack: () -> Unit) {
                 Text(
                     text = "Made with ❤️ by OpenSourceIt",
                     color = hackerGreen.copy(alpha = 0.6f),
-                    fontSize = 10.sp,
+                    fontSize = 16.sp,
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
                     textAlign = TextAlign.Center
@@ -462,7 +462,7 @@ fun QuickIntelSection(
     neonCyan: Color,
     hackerDark: Color
 ) {
-    val intel = exifAnalyzer.getQuickIntel(context, selectedUri, allData)
+    val intel = ExifAnalyzer.getQuickIntel(context, selectedUri, allData)
 
     Column(
         modifier = Modifier
